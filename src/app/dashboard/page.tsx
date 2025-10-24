@@ -35,6 +35,17 @@ import {
 // API Base URL - Change this to your Spring Boot backend URL
 const API_BASE_URL = "http://localhost:8080/api/transcripts";
 
+// Section interface
+interface Section {
+  id: number;
+  sectionCode: string;
+  name: string;
+  teacherId: number;
+  teacherName: string;
+  studentCount: number;
+  createdAt: string;
+}
+
 // Student Icon Component
 const StudentIcon = ({
   letter,
@@ -57,6 +68,11 @@ export default function Dashboard() {
   const [transcript, setTranscript] = useState<any>(null);
   const [analytics, setAnalytics] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("create");
+  
+  // Section management state
+  const [sections, setSections] = useState<Section[]>([]);
+  const [selectedSectionId, setSelectedSectionId] = useState<string>("all");
+  const [loadingSections, setLoadingSections] = useState(true);
 
   // Form for Create Transcript - MUST be called before any early returns
   const createForm = useForm<CreateTranscriptInput>({
@@ -66,6 +82,7 @@ export default function Dashboard() {
       studentName: "",
       email: "",
       major: "",
+      sectionId: undefined,
     },
   });
 
@@ -78,6 +95,7 @@ export default function Dashboard() {
       courseName: "",
       credits: 3,
       grade: "",
+      sectionId: undefined,
     },
   });
 
@@ -86,6 +104,7 @@ export default function Dashboard() {
     resolver: zodResolver(viewTranscriptSchema),
     defaultValues: {
       studentId: "",
+      sectionId: undefined,
     },
   });
 
@@ -96,6 +115,50 @@ export default function Dashboard() {
     }
   }, [session, isPending, router]);
 
+  // Fetch teacher's sections on mount
+  useEffect(() => {
+    const fetchSections = async () => {
+      if (!session?.user) return;
+      
+      setLoadingSections(true);
+      try {
+        const token = localStorage.getItem("bearer_token");
+        const response = await fetch("/api/sections", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) throw new Error("Failed to fetch sections");
+
+        const data = await response.json();
+        setSections(data);
+        
+        // Auto-select first section if available
+        if (data.length > 0 && selectedSectionId === "all") {
+          setSelectedSectionId(data[0].id.toString());
+        }
+      } catch (err: any) {
+        console.error("Error fetching sections:", err);
+        toast.error("Failed to load sections");
+      } finally {
+        setLoadingSections(false);
+      }
+    };
+
+    if (session?.user) {
+      fetchSections();
+    }
+  }, [session]);
+
+  // Update form section values when section changes
+  useEffect(() => {
+    const sectionId = selectedSectionId === "all" ? undefined : parseInt(selectedSectionId);
+    createForm.setValue("sectionId", sectionId);
+    gradeForm.setValue("sectionId", sectionId);
+    viewForm.setValue("sectionId", sectionId);
+  }, [selectedSectionId, createForm, gradeForm, viewForm]);
+
   // Sign out handler
   const handleSignOut = async () => {
     const { error } = await authClient.signOut();
@@ -103,7 +166,7 @@ export default function Dashboard() {
       toast.error(error.code);
     } else {
       localStorage.removeItem("bearer_token");
-      refetch(); // Update session state
+      refetch();
       toast.success("Signed out successfully");
       router.push("/");
     }
@@ -137,6 +200,24 @@ export default function Dashboard() {
       if (!response.ok) throw new Error("Failed to create transcript");
 
       const result = await response.json();
+      
+      // Assign student to section if sectionId provided
+      if (data.sectionId) {
+        try {
+          const token = localStorage.getItem("bearer_token");
+          await fetch(`/api/sections/${data.sectionId}/students`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ studentId: data.studentId }),
+          });
+        } catch (err) {
+          console.error("Failed to assign student to section:", err);
+        }
+      }
+      
       toast.success(`Transcript created successfully for ${result.studentName}!`);
       createForm.reset();
     } catch (err: any) {
@@ -173,15 +254,51 @@ export default function Dashboard() {
     }
   };
 
-  // Get Transcript Handler
+  // Get Transcript Handler with section filtering
   const handleGetTranscript = async (data: ViewTranscriptInput) => {
     setLoading("search");
     try {
+      // First check if student is in selected section
+      if (data.sectionId) {
+        const token = localStorage.getItem("bearer_token");
+        const sectionStudentsResponse = await fetch(`/api/sections/${data.sectionId}/students`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        
+        if (sectionStudentsResponse.ok) {
+          const sectionStudents = await sectionStudentsResponse.json();
+          const isInSection = sectionStudents.some((s: any) => s.studentId === data.studentId);
+          
+          if (!isInSection) {
+            toast.error("Access denied: Student not in this section");
+            setTranscript(null);
+            setLoading(null);
+            return;
+          }
+        }
+      }
+
       const response = await fetch(`${API_BASE_URL}/${data.studentId}`);
 
       if (!response.ok) throw new Error("Transcript not found");
 
       const result = await response.json();
+      
+      // Fetch student's sections
+      const token = localStorage.getItem("bearer_token");
+      const sectionsResponse = await fetch(`/api/students/${data.studentId}/sections`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (sectionsResponse.ok) {
+        const studentSections = await sectionsResponse.json();
+        result.sections = studentSections;
+      }
+      
       setTranscript(result);
       toast.success("Transcript retrieved successfully!");
     } catch (err: any) {
@@ -209,6 +326,13 @@ export default function Dashboard() {
     } finally {
       setLoading(null);
     }
+  };
+
+  // Get current section name
+  const getCurrentSectionName = () => {
+    if (selectedSectionId === "all") return "All Sections";
+    const section = sections.find(s => s.id.toString() === selectedSectionId);
+    return section ? `${section.sectionCode}: ${section.name}` : "Unknown Section";
   };
 
   // Prepare data for TranscriptAnalyticsDashboard
@@ -344,6 +468,50 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        {/* Section Selector */}
+        <Card className="p-6 mb-6 bg-white dark:bg-gray-800 shadow-lg border-2 border-blue-100 dark:border-blue-900/50">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+                Section Filter
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Select a section to filter students and transcripts
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {loadingSections ? (
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm">Loading sections...</span>
+                </div>
+              ) : (
+                <>
+                  <Label htmlFor="section-select" className="text-gray-700 dark:text-gray-300 font-medium">
+                    Active Section:
+                  </Label>
+                  <Select value={selectedSectionId} onValueChange={setSelectedSectionId}>
+                    <SelectTrigger id="section-select" className="w-[280px] border-blue-200 focus:border-blue-500">
+                      <SelectValue placeholder="Select section" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Sections</SelectItem>
+                      {sections.map((section) => (
+                        <SelectItem key={section.id} value={section.id.toString()}>
+                          {section.sectionCode}: {section.name} ({section.studentCount} students)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Badge className="bg-blue-600 text-white px-3 py-1">
+                    {getCurrentSectionName()}
+                  </Badge>
+                </>
+              )}
+            </div>
+          </div>
+        </Card>
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           {/* Tabs List */}
           <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 h-auto p-1 bg-white dark:bg-gray-800 shadow-lg border border-purple-100 dark:border-gray-700">
@@ -394,6 +562,11 @@ export default function Dashboard() {
                     </h2>
                     <p className="text-gray-600 dark:text-gray-400 mt-2">
                       Enter student information to create a new transcript record
+                      {selectedSectionId !== "all" && (
+                        <span className="block mt-1 text-blue-600 dark:text-blue-400 font-medium">
+                          Will be assigned to: {getCurrentSectionName()}
+                        </span>
+                      )}
                     </p>
                   </div>
 
@@ -514,6 +687,11 @@ export default function Dashboard() {
                     </h2>
                     <p className="text-gray-600 dark:text-gray-400 mt-2">
                       Add or update course grades for an existing student
+                      {selectedSectionId !== "all" && (
+                        <span className="block mt-1 text-blue-600 dark:text-blue-400 font-medium">
+                          Filtered by: {getCurrentSectionName()}
+                        </span>
+                      )}
                     </p>
                   </div>
 
@@ -649,6 +827,11 @@ export default function Dashboard() {
                     </h2>
                     <p className="text-gray-600 dark:text-gray-400 mt-2">
                       Retrieve and display a student's complete transcript
+                      {selectedSectionId !== "all" && (
+                        <span className="block mt-1 text-blue-600 dark:text-blue-400 font-medium">
+                          Filtered by: {getCurrentSectionName()}
+                        </span>
+                      )}
                     </p>
                   </div>
 
@@ -689,14 +872,30 @@ export default function Dashboard() {
                   {/* Display Transcript */}
                   {transcript && (
                     <div className="mt-8 p-6 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl border-2 border-purple-200 dark:border-purple-800">
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                         <h3 className="text-2xl font-bold text-purple-900 dark:text-purple-100">
                           {transcript.studentName}
                         </h3>
-                        <Badge className="bg-purple-600 text-white text-lg px-4 py-2">
-                          GPA: {transcript.gpa?.toFixed(2) || "N/A"}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-purple-600 text-white text-lg px-4 py-2">
+                            GPA: {transcript.gpa?.toFixed(2) || "N/A"}
+                          </Badge>
+                        </div>
                       </div>
+
+                      {/* Student Sections */}
+                      {transcript.sections && transcript.sections.length > 0 && (
+                        <div className="mb-4">
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Enrolled Sections:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {transcript.sections.map((section: any) => (
+                              <Badge key={section.id} className="bg-blue-600 text-white">
+                                {section.sectionCode}: {section.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
@@ -777,6 +976,11 @@ export default function Dashboard() {
                     <h2 className="text-2xl font-bold text-orange-700 dark:text-orange-400 flex items-center">
                       <Badge className="mr-3 bg-orange-600 text-white px-3 py-1">4</Badge>
                       System Analytics
+                      {selectedSectionId !== "all" && (
+                        <Badge className="ml-3 bg-blue-600 text-white">
+                          {getCurrentSectionName()}
+                        </Badge>
+                      )}
                     </h2>
                     <p className="text-gray-600 dark:text-gray-400 mt-2">
                       View comprehensive analytics and performance metrics from the backend

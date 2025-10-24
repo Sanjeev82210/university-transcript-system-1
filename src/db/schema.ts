@@ -17,6 +17,8 @@ export const user = sqliteTable("user", {
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .$defaultFn(() => new Date())
     .notNull(),
+  role: text("role").default('STUDENT'),
+  teacherId: integer("teacher_id"),
 });
 
 export const session = sqliteTable("session", {
@@ -65,4 +67,30 @@ export const verification = sqliteTable("verification", {
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
     () => new Date(),
   ),
+});
+
+// Teacher table
+export const teacher = sqliteTable("teacher", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  userId: text("user_id").references(() => user.id),
+  createdAt: text("created_at").notNull(),
+});
+
+// Section table
+export const section = sqliteTable("section", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  sectionCode: text("section_code").notNull().unique(),
+  name: text("name").notNull(),
+  teacherId: integer("teacher_id").references(() => teacher.id),
+  createdAt: text("created_at").notNull(),
+});
+
+// Student-Section junction table
+export const studentSection = sqliteTable("student_section", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  studentId: text("student_id").notNull(),
+  sectionId: integer("section_id").references(() => section.id),
+  enrolledAt: text("enrolled_at").notNull(),
 });

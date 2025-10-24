@@ -8,6 +8,7 @@ export const createTranscriptSchema = z.object({
   studentName: z.string().min(1, "Student name is required"),
   email: z.string().email("Invalid email address"),
   major: z.string().min(1, "Major is required"),
+  sectionId: z.coerce.number().optional(),
 });
 
 /**
@@ -19,6 +20,7 @@ export const updateGradesSchema = z.object({
   courseName: z.string().min(1, "Course name is required"),
   credits: z.coerce.number().min(1, "Credits must be at least 1").max(6, "Credits cannot exceed 6"),
   grade: z.string().min(1, "Grade is required").max(2, "Grade must be 1-2 characters"),
+  sectionId: z.coerce.number().optional(),
 });
 
 /**
@@ -26,6 +28,7 @@ export const updateGradesSchema = z.object({
  */
 export const viewTranscriptSchema = z.object({
   studentId: z.string().min(1, "Student ID is required"),
+  sectionId: z.coerce.number().optional(),
 });
 
 export type CreateTranscriptInput = z.infer<typeof createTranscriptSchema>;
