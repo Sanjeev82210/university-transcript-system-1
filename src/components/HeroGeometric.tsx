@@ -21,7 +21,7 @@ export default function HeroGeometric({
   title1 = "Manage Student Transcripts",
   title2 = "Secure Grading & Reports",
 }: HeroGeometricProps) {
-  const { data: session, refetch } = useSession();
+  const { data: session, isPending, refetch } = useSession();
   const router = useRouter();
 
   const handleSignOut = async () => {
@@ -48,9 +48,15 @@ export default function HeroGeometric({
               <span className="font-bold text-gray-900 dark:text-white">Transcript System</span>
             </div>
 
-            {/* Auth Buttons */}
+            {/* Auth Buttons - Show skeleton while loading */}
             <div className="flex items-center gap-3">
-              {session?.user ? (
+              {isPending ? (
+                // Loading skeleton
+                <div className="flex items-center gap-3">
+                  <div className="w-24 h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                  <div className="w-20 h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" />
+                </div>
+              ) : session?.user ? (
                 <>
                   {/* User Info */}
                   <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
@@ -270,7 +276,7 @@ export default function HeroGeometric({
             {
               icon: "🔒",
               title: "Secure & Reliable",
-              description: "Built with Spring Boot backend and persistent data storage",
+              description: "Built with better-auth backend and persistent data storage",
             },
           ].map((feature, index) => (
             <motion.div

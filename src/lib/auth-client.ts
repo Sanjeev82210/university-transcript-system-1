@@ -46,15 +46,28 @@ export function useSession(): SessionData {
          setSession(res.data);
          setError(null);
       } catch (err) {
+         // Silently fail - user is not logged in
+         console.log("No active session");
          setSession(null);
-         setError(err);
+         setError(null); // Don't set error to avoid showing error states
       } finally {
          setIsPending(false);
       }
    };
 
    useEffect(() => {
+      // Add timeout to prevent infinite hanging
+      const timeoutId = setTimeout(() => {
+         if (isPending) {
+            console.log("Session fetch timeout - setting to null");
+            setIsPending(false);
+            setSession(null);
+         }
+      }, 5000); // 5 second timeout
+
       fetchSession();
+
+      return () => clearTimeout(timeoutId);
    }, []);
 
    return { data: session, isPending, error, refetch };
