@@ -31,6 +31,25 @@ export const viewTranscriptSchema = z.object({
   sectionId: z.coerce.number().optional(),
 });
 
+/**
+ * Validation schema for creating a new course
+ */
+export const createCourseSchema = z.object({
+  courseCode: z.string().min(1, "Course code is required").max(20, "Course code too long"),
+  courseName: z.string().min(1, "Course name is required").max(200, "Course name too long"),
+  sectionId: z.coerce.number().optional(),
+});
+
+/**
+ * Validation schema for creating a new section
+ */
+export const createSectionSchema = z.object({
+  sectionCode: z.string().min(1, "Section code is required").max(20, "Section code too long"),
+  name: z.string().min(1, "Section name is required").max(200, "Section name too long"),
+});
+
 export type CreateTranscriptInput = z.infer<typeof createTranscriptSchema>;
 export type UpdateGradesInput = z.infer<typeof updateGradesSchema>;
 export type ViewTranscriptInput = z.infer<typeof viewTranscriptSchema>;
+export type CreateCourseInput = z.infer<typeof createCourseSchema>;
+export type CreateSectionInput = z.infer<typeof createSectionSchema>;

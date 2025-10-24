@@ -16,13 +16,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { GraduationCap, ArrowLeft, Loader2, FileText, Edit, BarChart3, Calculator, Award, Percent, LogOut, User } from "lucide-react";
+import { GraduationCap, ArrowLeft, Loader2, FileText, Edit, BarChart3, Calculator, Award, Percent, LogOut, User, BookOpen, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { TranscriptAnalyticsDashboard } from "@/components/ui/transcript-analytics-dashboard";
+import { CourseManagement } from "@/components/ui/course-management";
+import { SectionManagement } from "@/components/ui/section-management";
 import { authClient, useSession } from "@/lib/auth-client";
+import { useRole } from "@/hooks/use-role";
+import { getRoleDisplayName, getRoleBadgeColor } from "@/lib/rbac";
 import {
   createTranscriptSchema,
   updateGradesSchema,
@@ -63,6 +67,7 @@ const StudentIcon = ({
 
 export default function Dashboard() {
   const { data: session, isPending, refetch } = useSession();
+  const { role, isLoading: roleLoading } = useRole();
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<any>(null);
@@ -173,7 +178,7 @@ export default function Dashboard() {
   };
 
   // Show loading state while checking authentication
-  if (isPending) {
+  if (isPending || roleLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-orange-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
         <div className="text-center">
@@ -439,12 +444,19 @@ export default function Dashboard() {
               </h1>
             </div>
             <div className="flex items-center gap-3">
-              {/* User Info */}
+              {/* User Info with Role Badge */}
               <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
                 <User className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                <span className="text-sm font-medium text-purple-900 dark:text-purple-100">
-                  {session.user.name || session.user.email}
-                </span>
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium text-purple-900 dark:text-purple-100">
+                    {session.user.name || session.user.email}
+                  </span>
+                  {role && (
+                    <Badge className={`${getRoleBadgeColor(role)} text-white text-xs px-2 py-0 mt-0.5`}>
+                      {getRoleDisplayName(role)}
+                    </Badge>
+                  )}
+                </div>
               </div>
               {/* Sign Out Button */}
               <Button
@@ -514,34 +526,54 @@ export default function Dashboard() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           {/* Tabs List */}
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 h-auto p-1 bg-white dark:bg-gray-800 shadow-lg border border-purple-100 dark:border-gray-700">
+          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 h-auto p-1 bg-white dark:bg-gray-800 shadow-lg border border-purple-100 dark:border-gray-700">
             <TabsTrigger
               value="create"
               className="data-[state=active]:bg-purple-600 data-[state=active]:text-white py-3 px-4 text-sm font-medium"
             >
               <FileText className="w-4 h-4 mr-2" />
-              Create New Transcript
+              <span className="hidden sm:inline">Create Transcript</span>
+              <span className="sm:hidden">Create</span>
             </TabsTrigger>
             <TabsTrigger
               value="update"
               className="data-[state=active]:bg-green-600 data-[state=active]:text-white py-3 px-4 text-sm font-medium"
             >
               <Edit className="w-4 h-4 mr-2" />
-              Update Grades
+              <span className="hidden sm:inline">Update Grades</span>
+              <span className="sm:hidden">Update</span>
             </TabsTrigger>
             <TabsTrigger
               value="view"
               className="data-[state=active]:bg-purple-600 data-[state=active]:text-white py-3 px-4 text-sm font-medium"
             >
               <FileText className="w-4 h-4 mr-2" />
-              View Transcript
+              <span className="hidden sm:inline">View Transcript</span>
+              <span className="sm:hidden">View</span>
             </TabsTrigger>
             <TabsTrigger
               value="analytics"
               className="data-[state=active]:bg-orange-600 data-[state=active]:text-white py-3 px-4 text-sm font-medium"
             >
               <BarChart3 className="w-4 h-4 mr-2" />
-              Analytics Dashboard
+              <span className="hidden sm:inline">Analytics</span>
+              <span className="sm:hidden">Stats</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="courses"
+              className="data-[state=active]:bg-purple-600 data-[state=active]:text-white py-3 px-4 text-sm font-medium"
+            >
+              <BookOpen className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Courses</span>
+              <span className="sm:hidden">Courses</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="sections"
+              className="data-[state=active]:bg-blue-600 data-[state=active]:text-white py-3 px-4 text-sm font-medium"
+            >
+              <Users className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Sections</span>
+              <span className="sm:hidden">Sections</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1073,6 +1105,34 @@ export default function Dashboard() {
                     </div>
                   )}
                 </Card>
+              </motion.div>
+            </TabsContent>
+          </AnimatePresence>
+
+          {/* Tab 5: Course Management */}
+          <AnimatePresence mode="wait">
+            <TabsContent value="courses" className="space-y-6">
+              <motion.div
+                variants={tabContentVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                <CourseManagement />
+              </motion.div>
+            </TabsContent>
+          </AnimatePresence>
+
+          {/* Tab 6: Section Management */}
+          <AnimatePresence mode="wait">
+            <TabsContent value="sections" className="space-y-6">
+              <motion.div
+                variants={tabContentVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                <SectionManagement />
               </motion.div>
             </TabsContent>
           </AnimatePresence>

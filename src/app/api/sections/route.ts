@@ -2,11 +2,29 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { section, teacher, studentSection } from '@/db/schema';
 import { eq, sql } from 'drizzle-orm';
+import { getCurrentUser } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
+    // Get authenticated user
+    const user = await getCurrentUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Authentication required', code: 'AUTHENTICATION_REQUIRED' },
+        { status: 401 }
+      );
+    }
+
+    // Check if user is TEACHER or ADMIN
+    if (user.role !== 'TEACHER' && user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Only teachers and administrators can create sections', code: 'UNAUTHORIZED_ROLE' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
-    const { sectionCode, name, teacherId } = body;
+    const { sectionCode, name } = body;
 
     // Validate required fields
     if (!sectionCode) {
@@ -23,20 +41,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!teacherId) {
+    // Get teacherId from session user
+    const teacherRecord = await db.select()
+      .from(teacher)
+      .where(eq(teacher.userId, user.id))
+      .limit(1);
+
+    if (teacherRecord.length === 0) {
       return NextResponse.json(
-        { error: 'teacherId is required', code: 'MISSING_TEACHER_ID' },
+        { error: 'Teacher record not found for current user', code: 'TEACHER_NOT_FOUND' },
         { status: 400 }
       );
     }
 
-    // Validate teacherId is a valid number
-    if (isNaN(parseInt(teacherId.toString()))) {
-      return NextResponse.json(
-        { error: 'teacherId must be a valid number', code: 'INVALID_TEACHER_ID' },
-        { status: 400 }
-      );
-    }
+    const teacherId = teacherRecord[0].id;
 
     // Check if sectionCode already exists
     const existingSection = await db
@@ -52,27 +70,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify teacher exists
-    const existingTeacher = await db
-      .select()
-      .from(teacher)
-      .where(eq(teacher.id, parseInt(teacherId.toString())))
-      .limit(1);
-
-    if (existingTeacher.length === 0) {
-      return NextResponse.json(
-        { error: 'Teacher not found', code: 'TEACHER_NOT_FOUND' },
-        { status: 400 }
-      );
-    }
-
     // Create new section
     const newSection = await db
       .insert(section)
       .values({
         sectionCode: sectionCode.trim(),
         name: name.trim(),
-        teacherId: parseInt(teacherId.toString()),
+        teacherId: teacherId,
         createdAt: new Date().toISOString(),
       })
       .returning();

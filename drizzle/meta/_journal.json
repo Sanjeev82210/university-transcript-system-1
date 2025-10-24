@@ -15,6 +15,13 @@
       "when": 1761328668983,
       "tag": "0001_tense_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1761329817626,
+      "tag": "0002_tan_avengers",
+      "breakpoints": true
     }
   ]
 }

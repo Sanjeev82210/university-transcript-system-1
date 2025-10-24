@@ -94,3 +94,15 @@ export const studentSection = sqliteTable("student_section", {
   sectionId: integer("section_id").references(() => section.id),
   enrolledAt: text("enrolled_at").notNull(),
 });
+
+// Courses table
+export const courses = sqliteTable('courses', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  courseCode: text('course_code').notNull().unique(),
+  courseName: text('course_name').notNull(),
+  sectionId: integer('section_id').references(() => section.id),
+  teacherId: integer('teacher_id').notNull().references(() => teacher.id),
+  createdById: text('created_by_id').notNull().references(() => user.id),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
