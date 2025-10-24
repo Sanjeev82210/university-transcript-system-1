@@ -50,13 +50,6 @@ interface Section {
   createdAt: string;
 }
 
-// Course interface for KL University examples
-// Examples: 24UC0022, 24SDCS01, 24MT2019, 24CS2202, 24AD2001
-interface Course {
-  code: string;
-  name: string;
-}
-
 // Student Icon Component
 const StudentIcon = ({
   letter,
@@ -85,15 +78,6 @@ export default function Dashboard() {
   const [sections, setSections] = useState<Section[]>([]);
   const [selectedSectionId, setSelectedSectionId] = useState<string>("all");
   const [loadingSections, setLoadingSections] = useState(true);
-
-  // KL University example courses for demo/reference
-  const [exampleCourses] = useState<Course[]>([
-    { code: '24UC0022', name: 'SOCIAL IMMERSIVE LEARNING' },
-    { code: '24SDCS01', name: 'FRONT END DEVELOPMENT FRAMEWORKS' },
-    { code: '24MT2019', name: 'PROBABILITY AND STATISTICS' },
-    { code: '24CS2202', name: 'COMPUTER NETWORKS' },
-    { code: '24AD2001', name: 'ARTIFICIAL INTELLIGENCE AND MACHINE LEARNING' },
-  ]);
 
   // Form for Create Transcript - MUST be called before any early returns
   const createForm = useForm<CreateTranscriptInput>({
@@ -169,12 +153,6 @@ export default function Dashboard() {
 
     if (session?.user) {
       fetchSections();
-      // Demo: Log KL University example courses loaded
-      console.log('Loaded KL University examples: 24UC0022, 24SDCS01, 24MT2019, 24CS2202, 24AD2001');
-      // Show demo toast on first load
-      toast.info('Demo with KL University courses', {
-        description: 'Example courses: 24UC0022, 24SDCS01, 24MT2019, 24CS2202, 24AD2001',
-      });
     }
   }, [session]);
 
@@ -229,7 +207,6 @@ export default function Dashboard() {
       const result = await response.json();
       
       // Assign student to section if sectionId provided
-      // Assign to section e.g., S-10-MA with KL course 24SDCS01
       if (data.sectionId) {
         try {
           const token = localStorage.getItem("bearer_token");
@@ -273,7 +250,7 @@ export default function Dashboard() {
       if (!response.ok) throw new Error("Failed to update grades");
 
       const result = await response.json();
-      toast.success(`Added grade for course ${data.courseCode}! GPA: ${result.gpa.toFixed(2)}`);
+      toast.success(`Grade added successfully! GPA: ${result.gpa.toFixed(2)}`);
       gradeForm.reset();
     } catch (err: any) {
       toast.error(err.message || "Error updating grades");
@@ -741,7 +718,7 @@ export default function Dashboard() {
                       Update Grades
                     </h2>
                     <p className="text-gray-600 dark:text-gray-400 mt-2">
-                      Add or update course grades for an existing student (select from KL University courses)
+                      Add or update course grades for an existing student
                       {selectedSectionId !== "all" && (
                         <span className="block mt-1 text-blue-600 dark:text-blue-400 font-medium">
                           Filtered by: {getCurrentSectionName()}
@@ -770,12 +747,12 @@ export default function Dashboard() {
 
                     <div>
                       <Label htmlFor="grade-courseCode" className="text-gray-700 dark:text-gray-300">
-                        Course Code * <span className="text-xs text-gray-500">(e.g., 24UC0022 - SOCIAL IMMERSIVE LEARNING)</span>
+                        Course Code *
                       </Label>
                       <Input
                         id="grade-courseCode"
                         {...gradeForm.register("courseCode")}
-                        placeholder="e.g., 24UC0022"
+                        placeholder="e.g., CS101"
                         className="mt-1 border-green-200 focus:border-green-500 focus:ring-green-500"
                       />
                       {gradeForm.formState.errors.courseCode && (
@@ -787,12 +764,12 @@ export default function Dashboard() {
 
                     <div>
                       <Label htmlFor="grade-courseName" className="text-gray-700 dark:text-gray-300">
-                        Course Name * <span className="text-xs text-gray-500">(e.g., FRONT END DEVELOPMENT FRAMEWORKS)</span>
+                        Course Name *
                       </Label>
                       <Input
                         id="grade-courseName"
                         {...gradeForm.register("courseName")}
-                        placeholder="e.g., COMPUTER NETWORKS"
+                        placeholder="e.g., Introduction to Programming"
                         className="mt-1 border-green-200 focus:border-green-500 focus:ring-green-500"
                       />
                       {gradeForm.formState.errors.courseName && (

@@ -38,15 +38,6 @@ interface Section {
   name: string;
 }
 
-/**
- * Course Management Component
- * KL University example courses are used as placeholders:
- * - 24UC0022 SOCIAL IMMERSIVE LEARNING
- * - 24SDCS01 FRONT END DEVELOPMENT FRAMEWORKS
- * - 24MT2019 PROBABILITY AND STATISTICS
- * - 24CS2202 COMPUTER NETWORKS
- * - 24AD2001 ARTIFICIAL INTELLIGENCE AND MACHINE LEARNING
- */
 export function CourseManagement() {
   const { canCreateCourses, canDeleteCourses, isLoading: roleLoading } = useRole();
   const [courses, setCourses] = useState<Course[]>([]);
@@ -99,8 +90,6 @@ export function CourseManagement() {
   useEffect(() => {
     fetchCourses();
     fetchSections();
-    // Demo: Log KL University example courses for reference
-    console.log('Loaded KL University course examples: 24UC0022, 24SDCS01, 24MT2019, 24CS2202, 24AD2001');
   }, []);
 
   // Create course handler
@@ -128,7 +117,7 @@ export function CourseManagement() {
       }
 
       const result = await response.json();
-      toast.success(`Added KL-style course ${result.courseCode} successfully!`);
+      toast.success(`Course ${result.courseCode} created successfully!`);
       form.reset();
       fetchCourses();
     } catch (err: any) {
@@ -138,7 +127,7 @@ export function CourseManagement() {
     }
   };
 
-  // Delete course handler (admin only)
+  // Delete course handler
   const handleDeleteCourse = async (courseId: number, courseCode: string) => {
     if (!confirm(`Are you sure you want to delete course ${courseCode}? This action cannot be undone.`)) {
       return;
@@ -164,7 +153,7 @@ export function CourseManagement() {
         return;
       }
 
-      toast.success(`Course ${courseCode} deleted successfully (admin action)`);
+      toast.success(`Course ${courseCode} deleted successfully`);
       fetchCourses();
     } catch (err: any) {
       toast.error(err.message || "Error deleting course");
@@ -192,7 +181,7 @@ export function CourseManagement() {
               Add New Course
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Create a new course (use KL University format) and optionally assign it to a section
+              Create a new course and optionally assign it to a section
             </p>
           </div>
 
@@ -200,12 +189,12 @@ export function CourseManagement() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="courseCode" className="text-gray-700 dark:text-gray-300">
-                  Course Code * <span className="text-xs text-gray-500">(e.g., 24UC0022)</span>
+                  Course Code *
                 </Label>
                 <Input
                   id="courseCode"
                   {...form.register("courseCode")}
-                  placeholder="e.g., 24UC0022"
+                  placeholder="e.g., CS301"
                   className="mt-1 border-purple-200 focus:border-purple-500"
                 />
                 {form.formState.errors.courseCode && (
@@ -217,12 +206,12 @@ export function CourseManagement() {
 
               <div>
                 <Label htmlFor="courseName" className="text-gray-700 dark:text-gray-300">
-                  Course Name * <span className="text-xs text-gray-500">(e.g., SOCIAL IMMERSIVE LEARNING)</span>
+                  Course Name *
                 </Label>
                 <Input
                   id="courseName"
                   {...form.register("courseName")}
-                  placeholder="e.g., FRONT END DEVELOPMENT FRAMEWORKS"
+                  placeholder="e.g., Advanced Algorithms"
                   className="mt-1 border-purple-200 focus:border-purple-500"
                 />
                 {form.formState.errors.courseName && (
@@ -312,7 +301,7 @@ export function CourseManagement() {
           </div>
         ) : courses.length === 0 ? (
           <p className="text-center text-gray-500 dark:text-gray-400 py-8">
-            No courses available. Create your first course above! (Try KL format: 24UC0022 - SOCIAL IMMERSIVE LEARNING)
+            No courses available. Create your first course above!
           </p>
         ) : (
           <div className="space-y-3">
@@ -355,7 +344,6 @@ export function CourseManagement() {
                       onClick={() => handleDeleteCourse(course.id, course.courseCode)}
                       disabled={loading === `delete-${course.id}`}
                       className="shrink-0"
-                      title="Delete course (admin only)"
                     >
                       {loading === `delete-${course.id}` ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
